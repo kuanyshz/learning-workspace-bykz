@@ -1,0 +1,127 @@
+/* Global Styles */
+@layer base {
+  :root {
+    --color-primary: #0f766e;
+    --color-secondary: #f43f5e;
+    --color-dark-bg: #0f172a;
+    --color-dark-card: #1e293b;
+    --font-mono: 'Fira Code', monospace;
+    --transition-fast: 150ms ease-in-out;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-dark-bg);
+    color: #f1f5f9;
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+}
+
+@layer components {
+  .editor-container {
+    position: relative;
+    width: 100%;
+    height: 600px;
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.5;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-dark-card);
+  }
+
+  .ghost-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    margin: 0;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.2);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .active-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 12px;
+    margin: 0;
+    background: transparent;
+    color: #ffffff;
+    border: none;
+    outline: none;
+    resize: none;
+    overflow-y: scroll;
+    overflow-x: auto;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    z-index: 2;
+    caret-color: #06b6d4;
+  }
+
+  .active-layer::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .active-layer::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .active-layer::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+  }
+
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
+
+  .btn-primary {
+    @apply bg-primary hover:bg-primary/90 text-white;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary hover:bg-secondary/90 text-white;
+  }
+
+  .card {
+    @apply bg-dark-card rounded-lg border border-gray-700 p-6;
+  }
+}
+
+@layer utilities {
+  .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
