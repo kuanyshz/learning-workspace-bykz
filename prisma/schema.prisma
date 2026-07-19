@@ -1,0 +1,235 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============= User Management =============
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password_hash String?
+  role          String    @default("learner") // learner, instructor, admin
+  image         String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  workspaces    Workspace[]
+  courses_taught Course[] @relation("instructor")
+  
+  @@index([email])
+  @@map("users")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String
+  type               String
+  provider           String
+  providerAccountId  String
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============= Course Management =============
+
+model Course {
+  id            String   @id @default(cuid())
+  title         String
+  description   String?  @db.Text
+  content       String?  @db.Text
+  instructor_id String
+  status        String   @default("draft") // draft, published, archived
+  difficulty    String   @default("beginner") // beginner, intermediate, advanced
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  instructor    User     @relation("instructor", fields: [instructor_id], references: [id], onDelete: Cascade)
+  workspaces    Workspace[]
+  lessons       Lesson[]
+  tasks         Task[]
+
+  @@index([instructor_id])
+  @@map("courses")
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  course_id   String
+  title       String
+  description String?  @db.Text
+  content     String?  @db.Text
+  order       Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  course      Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  tasks       Task[]
+
+  @@index([course_id])
+  @@map("lessons")
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  course_id   String
+  lesson_id   String?
+  title       String
+  description String?  @db.Text
+  starter_code String? @db.Text
+  expected_output String? @db.Text
+  language    String   @default("javascript")
+  difficulty  String   @default("beginner")
+  order       Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  course      Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  lesson      Lesson?  @relation(fields: [lesson_id], references: [id], onDelete: SetNull)
+  submissions TaskSubmission[]
+  hints       Hint[]
+
+  @@index([course_id])
+  @@index([lesson_id])
+  @@map("tasks")
+}
+
+// ============= Workspace & Editing =============
+
+model Workspace {
+  id               String   @id @default(cuid())
+  user_id          String
+  course_id        String
+  code_content     String   @db.Text
+  cursor_position  Int      @default(0)
+  scroll_top       Int      @default(0)
+  scroll_left      Int      @default(0)
+  status           String   @default("in_progress") // in_progress, completed, abandoned
+  last_saved       DateTime @default(now())
+  last_activity    DateTime @default(now())
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user             User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  course           Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  telemetry_events TelemetryEvent[]
+  frustration_logs FrustrationLog[]
+
+  @@unique([user_id, course_id])
+  @@index([user_id])
+  @@index([course_id])
+  @@map("workspaces")
+}
+
+// ============= Submissions & Evaluation =============
+
+model TaskSubmission {
+  id            String   @id @default(cuid())
+  task_id       String
+  workspace_id  String?
+  code          String   @db.Text
+  status        String   @default("pending") // pending, passed, failed
+  output        String?  @db.Text
+  error_message String?  @db.Text
+  execution_time Int?    // in milliseconds
+  submitted_at  DateTime @default(now())
+
+  task          Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+  @@map("task_submissions")
+}
+
+// ============= Hints & Interventions =============
+
+model Hint {
+  id          String   @id @default(cuid())
+  task_id     String
+  level       Int      @default(1) // 1=gentle, 2=moderate, 3=direct
+  text        String   @db.Text
+  trigger_condition String? @db.Text // frustration, time_elapsed, submission_count
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  task        Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  @@index([task_id])
+  @@map("hints")
+}
+
+// ============= Telemetry & Analytics =============
+
+model TelemetryEvent {
+  id            String   @id @default(cuid())
+  workspace_id  String
+  session_id    String
+  event_type    String   // input, paste, focus, blur, hint_injected, submission, etc.
+  event_data    Json?
+  cursor_pos    Int?
+  content_length Int?
+  timestamp     DateTime @default(now())
+
+  workspace     Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, timestamp])
+  @@index([session_id])
+  @@map("telemetry_events")
+}
+
+model FrustrationLog {
+  id              String   @id @default(cuid())
+  workspace_id    String
+  state_hash      String   @db.VarChar(64)
+  history_count   Int      @default(0)
+  hint_triggered  Boolean  @default(false)
+  created_at      DateTime @default(now())
+
+  workspace       Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id, created_at])
+  @@map("frustration_logs")
+}
+
+model AnalyticsSnapshot {
+  id              String   @id @default(cuid())
+  date            DateTime @unique
+  total_users     Int      @default(0)
+  active_workspaces Int    @default(0)
+  avg_session_duration Int @default(0) // in seconds
+  frustration_events Int   @default(0)
+  submissions_completed Int @default(0)
+  created_at      DateTime @default(now())
+
+  @@map("analytics_snapshots")
+}
